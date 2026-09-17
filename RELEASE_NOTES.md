@@ -1,5 +1,5 @@
-# QuotaPing 1.2.0
+# QuotaPing 1.2.1
 
-- 移除常驻桌面的悬浮窗，仅在菜单栏展示状态。
-- 新增 Intel 芯片支持，单一 Universal 2 安装包同时兼容 Apple Silicon 和 Intel Mac。
-- 优化编译与归档方式，减少通用版安装包的体积增幅。
+- 新增用户级安装脚本，默认安装到 `~/Applications`，避免系统级目录对 ad-hoc 应用的额外拦截。
+- 安装时自动清理下载隔离属性、校验签名、备份旧版本并启动应用。
+- 修正 Sparkle.framework 归档方式，完整保留符号链接和嵌套 helper 签名。

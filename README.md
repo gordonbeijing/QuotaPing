@@ -23,6 +23,16 @@ open QuotaPing.app
 - 5h 和 1w 的上下两行各自使用相同左边界对齐
 - 整枚状态图标使用 macOS 菜单栏默认色，自动适配深浅外观
 
+## 首次安装
+
+对外分发请使用 `QuotaPing-<版本>-user-installer.zip`：
+
+1. 完整解压 ZIP。
+2. 双击“安装 QuotaPing.command”。
+3. 脚本会安装到 `~/Applications`、清理下载隔离属性、校验签名并启动。
+
+不要将免 Developer ID 签名的版本拖入系统级 `/Applications`；部分 macOS 26 环境会在启动前挂起 ad-hoc 签名应用。
+
 ## 使用
 
 | 操作 | 效果 |
@@ -56,6 +66,6 @@ QUOTAPING_DEBUG=1 ./QuotaPing.app/Contents/MacOS/QuotaPing
 ./scripts/package_release.sh
 ```
 
-脚本会构建应用、生成 EdDSA 签名更新包，并更新根目录的 `appcast.xml`。然后提交并推送 `appcast.xml`，再将 `updates/` 中的 ZIP 上传到对应 GitHub Release。
+脚本会构建应用、生成 EdDSA 签名更新包、更新根目录的 `appcast.xml`，并在 `dist/` 生成面向首次安装的用户级安装包。然后提交并推送 `appcast.xml`，再将完整更新包、delta 和用户安装包上传到对应 GitHub Release。
 
 Sparkle 2.10.0 二进制会在首次构建时从官方 Release 下载并校验 SHA-256；下载内容保存在已忽略的 `Vendor/` 目录。更新签名私钥保存在本机钥匙串，不应提交到仓库。

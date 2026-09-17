@@ -35,10 +35,6 @@ cp "$BUILD_DIR/QuotaPing" QuotaPing.app/Contents/MacOS/QuotaPing
 cp Info.plist QuotaPing.app/Contents/Info.plist
 chmod 644 QuotaPing.app/Contents/Info.plist
 ditto "$SPARKLE_DIR/Sparkle.framework" QuotaPing.app/Contents/Frameworks/Sparkle.framework
-# 运行时不需要 Sparkle 的头文件和 Swift/Clang 模块。
-rm -rf QuotaPing.app/Contents/Frameworks/Sparkle.framework/Versions/B/Headers
-rm -rf QuotaPing.app/Contents/Frameworks/Sparkle.framework/Versions/B/PrivateHeaders
-rm -rf QuotaPing.app/Contents/Frameworks/Sparkle.framework/Versions/B/Modules
 ICON_INFO_PLIST="$(mktemp /tmp/quotaping-appicon-info.XXXXXX)"
 mkdir -p "$BUILD_DIR/IconResources"
 xcrun actool Assets/AppIcon.xcassets \
@@ -50,7 +46,9 @@ xcrun actool Assets/AppIcon.xcassets \
 cp "$BUILD_DIR/IconResources/AppIcon.icns" QuotaPing.app/Contents/Resources/AppIcon.icns
 chmod 644 QuotaPing.app/Contents/Resources/AppIcon.icns
 rm -f "$ICON_INFO_PLIST"
-codesign --force --deep --sign - QuotaPing.app
+# Sparkle 内部 helper 已带正确的 ad-hoc 签名与 Hardened Runtime。
+# 仅签名应用外层，不使用 --deep 改写嵌套组件。
+codesign --force --sign - QuotaPing.app
 codesign --verify --deep --strict QuotaPing.app
 echo "==> 完成：$(pwd)/QuotaPing.app"
 echo "    运行：open $(pwd)/QuotaPing.app"

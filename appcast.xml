@@ -3,6 +3,25 @@
     <channel>
         <title>QuotaPing</title>
         <item>
+            <title>1.2.1</title>
+            <pubDate>Thu, 17 Sep 2026 22:20:47 +0800</pubDate>
+            <link>https://github.com/gordonbeijing/QuotaPing</link>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown"><![CDATA[# QuotaPing 1.2.1
+
+- 新增用户级安装脚本，默认安装到 `~/Applications`，避免系统级目录对 ad-hoc 应用的额外拦截。
+- 安装时自动清理下载隔离属性、校验签名、备份旧版本并启动应用。
+- 修正 Sparkle.framework 归档方式，完整保留符号链接和嵌套 helper 签名。
+]]></description>
+            <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.1/QuotaPing-1.2.1-macOS-universal.zip" length="1350675" type="application/octet-stream" sparkle:edSignature="dkkeR0C5TgJPgaAG7oulMjq/XoNEcihFEo9haVxbUoE/zACEMrVUS/pQPJNt7mTtd+CKr87xfBN5r3DyNRBDBQ=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.1/QuotaPing4-3.delta" sparkle:deltaFrom="3" length="32670" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="biRr6S4szS+2oH8bOXosU39UcLIemkGmsaUDTMcqlzw7DZzXLjgrt3KljxRh3WstnDyscZXN6S5Sw5ywbQzQDA=="/>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.1/QuotaPing4-2.delta" sparkle:deltaFrom="2" length="108286" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="WH953FVLoAjxwZXjCZlBCXwVVCH/ikOvEmhUtmGencP9CKMLzwOpk8KksOlN8EkM6zSBpG+M+2+It5PcWelkBg=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.2.0</title>
             <pubDate>Thu, 17 Sep 2026 21:15:23 +0800</pubDate>
             <link>https://github.com/gordonbeijing/QuotaPing</link>

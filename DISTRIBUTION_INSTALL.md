@@ -8,20 +8,25 @@
 
 ## 安装
 
-1. 解压 `QuotaPing-1.2.0-macOS-universal.zip`。
-2. 将 `QuotaPing.app` 拖入“应用程序”文件夹。
-3. 双击打开 QuotaPing。
-4. 如 macOS 提示无法验证开发者，请打开“系统设置 → 隐私与安全性”。
-5. 在页面底部找到 QuotaPing，点击“仍要打开”，再次确认“打开”。
+1. 解压 `QuotaPing-1.2.1-user-installer.zip`。
+2. 打开解压后的 `QuotaPing-1.2.1` 文件夹。
+3. 双击 **安装 QuotaPing.command**。
+4. 如果 macOS 拦截脚本，右键点击它，选择“打开”；或在终端执行：
 
-成功打开一次后，之后可直接从“应用程序”或登录项启动。
+```bash
+bash "/完整路径/安装 QuotaPing.command"
+```
+
+5. 脚本会安装到当前用户的 `~/Applications/QuotaPing.app`，并自动启动。
+
+成功启动后 QuotaPing 仅显示在菜单栏，不会显示 Dock 图标或普通窗口。
 
 ## 安全校验
 
 在终端进入压缩包所在目录，执行：
 
 ```bash
-shasum -a 256 QuotaPing-1.2.0-macOS-universal.zip
+shasum -a 256 QuotaPing-1.2.1-user-installer.zip
 ```
 
 输出应与随包提供的 `.sha256` 文件一致。
