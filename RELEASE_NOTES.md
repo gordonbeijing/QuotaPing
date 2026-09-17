@@ -1,6 +1,5 @@
-# QuotaPing 1.1.0
+# QuotaPing 1.2.0
 
-- 新增基于 Sparkle 2 的应用内更新。
-- 菜单新增“检查更新…”，可手动检查、下载并安装新版本。
-- 支持后台定期检查更新。
-- 更新包使用 Sparkle EdDSA 签名验证。
+- 移除常驻桌面的悬浮窗，仅在菜单栏展示状态。
+- 新增 Intel 芯片支持，单一 Universal 2 安装包同时兼容 Apple Silicon 和 Intel Mac。
+- 优化编译与归档方式，减少通用版安装包的体积增幅。

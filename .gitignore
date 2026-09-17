@@ -7,5 +7,7 @@ dist/
 updates/*.zip
 updates/*.dmg
 updates/*.md
+updates/*.delta
+updates/appcast.xml
 updates/old_updates/
 Assets/GooglePing-AppIcon*.png

@@ -2,13 +2,13 @@
 
 ## 系统要求
 
-- Apple Silicon Mac（M1/M2/M3/M4 等）
+- Apple Silicon Mac（M1/M2/M3/M4 等）或 Intel Mac
 - macOS 14 或更高版本
 - 如需查看 ChatGPT/Codex 额度，需先安装 Codex CLI 并执行 `codex login`
 
 ## 安装
 
-1. 解压 `QuotaPing-1.1.0-macOS-arm64.zip`。
+1. 解压 `QuotaPing-1.2.0-macOS-universal.zip`。
 2. 将 `QuotaPing.app` 拖入“应用程序”文件夹。
 3. 双击打开 QuotaPing。
 4. 如 macOS 提示无法验证开发者，请打开“系统设置 → 隐私与安全性”。
@@ -21,7 +21,7 @@
 在终端进入压缩包所在目录，执行：
 
 ```bash
-shasum -a 256 QuotaPing-1.1.0-macOS-arm64.zip
+shasum -a 256 QuotaPing-1.2.0-macOS-universal.zip
 ```
 
 输出应与随包提供的 `.sha256` 文件一致。

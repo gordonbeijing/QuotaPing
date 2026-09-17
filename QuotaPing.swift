@@ -1,6 +1,6 @@
 // QuotaPing.swift
-// macOS 桌面置顶悬浮窗：google.com 连通检测 + ChatGPT 额度（5 小时 / 每周）
-// 单文件实现，零第三方依赖。构建：bash build.sh
+// macOS 菜单栏工具：google.com 连通检测 + ChatGPT 额度（5 小时 / 每周）
+// 单文件实现。构建：bash build.sh
 // 调试：QUOTAPING_DEBUG=1 运行时向统一日志输出状态
 
 import AppKit
@@ -38,7 +38,7 @@ enum Prefs {
     static func migrateLegacyDefaultsIfNeeded() {
         guard d.bool(forKey: "didMigrateGooglePingDefaults") == false else { return }
         if let legacy = d.persistentDomain(forName: "com.local.googleping") {
-            for key in ["pingInterval", "quotaInterval", "levelMode", "windowFrame"]
+            for key in ["pingInterval", "quotaInterval"]
             where d.object(forKey: key) == nil {
                 d.set(legacy[key], forKey: key)
             }
@@ -61,21 +61,6 @@ enum Prefs {
         set { d.set(newValue, forKey: "quotaInterval") }
     }
 
-    static var levelMode: String {
-        get { d.string(forKey: "levelMode") ?? "floating" }
-        set { d.set(newValue, forKey: "levelMode") }
-    }
-
-    static var windowFrame: NSRect {
-        get {
-            if let s = d.string(forKey: "windowFrame") {
-                let r = NSRectFromString(s)
-                if r != .zero { return r }
-            }
-            return .zero
-        }
-        set { d.set(NSStringFromRect(newValue), forKey: "windowFrame") }
-    }
 }
 
 // MARK: - 连通检测引擎
@@ -607,240 +592,6 @@ final class QuotaEngine: ObservableObject {
     }
 }
 
-// MARK: - 悬浮窗（置顶 / 贴桌面可切换）
-
-final class FloatWindow: NSPanel {
-    private var mode: String
-
-    init(contentSize: NSSize, mode: String) {
-        self.mode = mode
-        super.init(contentRect: NSRect(origin: .zero, size: contentSize),
-                   styleMask: [.borderless, .nonactivatingPanel],
-                   backing: .buffered, defer: false)
-        isOpaque = false
-        backgroundColor = .clear
-        hasShadow = false
-        isMovableByWindowBackground = true      // 按住任意空白处拖拽移动
-        isReleasedWhenClosed = false
-        hidesOnDeactivate = false               // 失焦不隐藏
-        applyMode()
-    }
-
-    // 无边框窗口默认不能成为 key window，交互（按钮/弹出）需要放开
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
-
-    /// contentView 设置完成后调用：双击切换 置顶 ↔ 贴桌面
-    func installDoubleTap() {
-        guard let cv = contentView else { return }
-        let dbl = NSClickGestureRecognizer(target: self, action: #selector(toggleMode))
-        dbl.numberOfClicksRequired = 2
-        cv.addGestureRecognizer(dbl)
-    }
-
-    @objc func toggleMode() {
-        setMode(mode == "floating" ? "desktop" : "floating")
-    }
-
-    func setMode(_ m: String) {
-        mode = m
-        Prefs.levelMode = m
-        applyMode()
-    }
-
-    private func applyMode() {
-        if mode == "desktop" {
-            // 桌面层：嵌在壁纸上，被普通窗口遮挡
-            level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
-            collectionBehavior = [.canJoinAllSpaces, .stationary]
-        } else {
-            // 始终置顶：所有桌面空间 + 全屏应用之上
-            level = .floating
-            collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        }
-    }
-}
-
-// MARK: - SwiftUI 视图
-
-struct ContentView: View {
-    @ObservedObject var ping: ReachabilityEngine
-    @ObservedObject var quota: QuotaEngine
-    @State private var showSettings = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // 连通行
-            HStack(spacing: 6) {
-                Circle().fill(dotColor).frame(width: 8, height: 8)
-                Text(pingLine)
-                    .font(.system(size: 11, weight: .medium))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                Spacer(minLength: 2)
-                Button {
-                    showSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help("设置")
-            }
-            Divider()
-            quotaSection
-        }
-        .padding(12)
-        .frame(width: 240, height: 104)
-        .background(.ultraThinMaterial,
-                    in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-        )
-        .onTapGesture { ping.check() }   // 单击 = 手动刷新连通性
-        .popover(isPresented: $showSettings, arrowEdge: .bottom) {
-            SettingsView(ping: ping, quota: quota)
-        }
-    }
-
-    private var dotColor: Color {
-        switch ping.status {
-        case .ok: return .green
-        case .slow: return .orange
-        case .fail: return .red
-        case .idle, .checking: return .yellow
-        }
-    }
-
-    private var pingLine: String {
-        switch ping.status {
-        case .idle: return "google.com 待检测"
-        case .checking: return "google.com 检测中…"
-        case .ok(let rtt):
-            let ts = ping.lastChecked.map { $0.formatted(date: .omitted, time: .standard) } ?? ""
-            return "google.com · \(Int(rtt.rounded()))ms · \(ts)"
-        case .slow(let rtt):
-            return "google.com · \(Int(rtt.rounded()))ms 不稳定"
-        case .fail(let r): return "google.com 不可达 · \(r)"
-        }
-    }
-
-    @ViewBuilder
-    private var quotaSection: some View {
-        switch quota.status {
-        case .idle, .loading:
-            Text("ChatGPT 额度：加载中…")
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
-        case .unavailable(let reason):
-            Text("ChatGPT 额度：\(reason)")
-                .font(.system(size: 10))
-                .foregroundStyle(.orange)
-                .lineLimit(2)
-        case .ok(_, let five, let weekly, _):
-            VStack(alignment: .leading, spacing: 5) {
-                QuotaRowView(label: "5h", window: five)
-                QuotaRowView(label: "周", window: weekly)
-            }
-        }
-    }
-}
-
-struct QuotaRowView: View {
-    let label: String
-    let window: QuotaWindow?
-
-    private var tint: Color {
-        guard let w = window else { return .gray }
-        switch w.remainingPercent {
-        case 50...: return .green
-        case 20..<50: return .yellow
-        default: return .red
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Text(label)
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .foregroundStyle(.secondary)
-                .frame(width: 18, alignment: .leading)
-            if let w = window {
-                ProgressView(value: Double(w.remainingPercent), total: 100)
-                    .tint(tint)
-                Text("\(w.remainingPercent)%")
-                    .font(.system(size: 10, weight: .medium))
-                    .monospacedDigit()
-                Text(resetLabel(w.resetAt))
-                    .font(.system(size: 9))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            } else {
-                Text("—").font(.system(size: 10)).foregroundStyle(.secondary)
-            }
-        }
-    }
-}
-
-struct SettingsView: View {
-    let ping: ReachabilityEngine
-    let quota: QuotaEngine
-
-    @AppStorage("pingInterval") private var pingInterval: Double = 30
-    @AppStorage("quotaInterval") private var quotaInterval: Double = 60
-
-    private let pingOptions: [(label: String, value: Double)] = [
-        ("5 秒", 5), ("15 秒", 15), ("30 秒", 30), ("1 分钟", 60), ("5 分钟", 300)
-    ]
-    private let quotaOptions: [(label: String, value: Double)] = [
-        ("30 秒", 30), ("1 分钟", 60), ("5 分钟", 300), ("15 分钟", 900)
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("连通检测频率").font(.system(size: 11, weight: .semibold))
-            Picker("连通", selection: $pingInterval) {
-                ForEach(pingOptions, id: \.value) { Text($0.label).tag($0.value) }
-            }
-            .pickerStyle(.radioGroup)
-            .labelsHidden()
-
-            Text("额度刷新频率").font(.system(size: 11, weight: .semibold))
-            Picker("额度", selection: $quotaInterval) {
-                ForEach(quotaOptions, id: \.value) { Text($0.label).tag($0.value) }
-            }
-            .pickerStyle(.radioGroup)
-            .labelsHidden()
-
-            Divider().padding(.vertical, 2)
-            sourceLine
-        }
-        .padding(14)
-        .frame(width: 210)
-        .onChange(of: pingInterval) { _, _ in ping.start(interval: pingInterval) }
-        .onChange(of: quotaInterval) { _, _ in quota.start(interval: quotaInterval) }
-    }
-
-    @ViewBuilder
-    private var sourceLine: some View {
-        switch quota.status {
-        case .ok(let plan, _, _, _):
-            Text("额度来源：Codex 凭据 · 套餐 \(plan)")
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
-        case .unavailable(let r):
-            Text(r).font(.system(size: 10)).foregroundStyle(.orange).lineLimit(2)
-        default:
-            Text("等待额度首次检测…")
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
 // MARK: - 帮助
 
 struct HelpFeatureRow: View {
@@ -914,12 +665,9 @@ struct HelpView: View {
             .padding(16)
             .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
 
-            HStack(spacing: 6) {
-                Image(systemName: "hand.draw")
-                Text("悬浮窗可拖动；双击可在“置顶悬浮”和“贴桌面”之间切换。")
-            }
-            .font(.system(size: 10.5))
-            .foregroundStyle(.secondary)
+            Text("所有状态都显示在菜单栏；点击图标可查看详情与设置。")
+                .font(.system(size: 10.5))
+                .foregroundStyle(.secondary)
         }
         .padding(24)
         .frame(width: 500)
@@ -931,7 +679,7 @@ final class HelpWindowController {
 
     init() {
         window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 430),
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 405),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -1183,7 +931,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     private let item: NSStatusItem
     private let ping: ReachabilityEngine
     private let quota: QuotaEngine
-    private let window: FloatWindow
     private let updaterController: SPUStandardUpdaterController
     private var cancellables = Set<AnyCancellable>()
     private var networkIndicator: NetworkIndicatorState = .unknown
@@ -1193,12 +940,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     init(
         ping: ReachabilityEngine,
         quota: QuotaEngine,
-        window: FloatWindow,
         updaterController: SPUStandardUpdaterController
     ) {
         self.ping = ping
         self.quota = quota
-        self.window = window
         self.updaterController = updaterController
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.length = 92
@@ -1291,20 +1036,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         logs.target = self
         menu.addItem(logs)
 
-        let top = NSMenuItem(title: "置顶悬浮",
-                             action: #selector(setWindowMode(_:)), keyEquivalent: "")
-        top.target = self
-        top.representedObject = "floating"
-        top.state = Prefs.levelMode == "floating" ? .on : .off
-        menu.addItem(top)
-
-        let desk = NSMenuItem(title: "贴桌面",
-                              action: #selector(setWindowMode(_:)), keyEquivalent: "")
-        desk.target = self
-        desk.representedObject = "desktop"
-        desk.state = Prefs.levelMode == "desktop" ? .on : .off
-        menu.addItem(desk)
-
         menu.addItem(.separator())
         let updates = NSMenuItem(
             title: "检查更新…",
@@ -1392,11 +1123,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         helpWindow.show()
     }
 
-    @objc private func setWindowMode(_ sender: NSMenuItem) {
-        guard let m = sender.representedObject as? String else { return }
-        window.setMode(m)
-    }
-
     @objc private func quit() {
         NSApp.terminate(nil)
     }
@@ -1407,23 +1133,12 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let ping = ReachabilityEngine()
     let quota = QuotaEngine()
-    private var window: FloatWindow!
     private var statusBar: StatusBarController!
     private var updaterController: SPUStandardUpdaterController!
-    private var moveObserver: NSObjectProtocol?
-
-    private let size = NSSize(width: 240, height: 104)
 
     func applicationDidFinishLaunching(_ note: Notification) {
         NSApp.setActivationPolicy(.accessory)
         Prefs.migrateLegacyDefaultsIfNeeded()
-
-        window = FloatWindow(contentSize: size, mode: Prefs.levelMode)
-        let host = NSHostingView(rootView: ContentView(ping: ping, quota: quota))
-        window.contentView = host
-        window.installDoubleTap()
-        positionWindow()
-        window.orderFrontRegardless()
 
         updaterController = SPUStandardUpdaterController(
             startingUpdater: true,
@@ -1433,17 +1148,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBar = StatusBarController(
             ping: ping,
             quota: quota,
-            window: window,
             updaterController: updaterController
         )
-
-        // 移动结束后记住位置
-        moveObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.didMoveNotification, object: window, queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            Prefs.windowFrame = self.window.frame
-        }
 
         // 连通探测失败时跳过本轮额度请求（不白打认证接口）
         quota.isOnline = { [weak self] in
@@ -1464,27 +1170,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if debugMode { NSLog("QuotaPing 启动完成（调试模式）") }
     }
 
-    func applicationWillTerminate(_ note: Notification) {
-        if let moveObserver { NotificationCenter.default.removeObserver(moveObserver) }
-        Prefs.windowFrame = window.frame
-    }
-
-    private func positionWindow() {
-        let saved = Prefs.windowFrame
-        let screen = NSScreen.screens.first(where: {
-            $0.frame.contains(CGPoint(x: saved.midX, y: saved.midY))
-        }) ?? NSScreen.main ?? NSScreen.screens.first!
-        if saved != .zero, screen.frame.insetBy(dx: -40, dy: -40).intersects(saved) {
-            window.setFrame(saved, display: true)
-        } else {
-            // 默认锚定右上角
-            let vf = screen.visibleFrame
-            window.setFrame(NSRect(x: vf.maxX - size.width - 48,
-                                   y: vf.maxY - size.height - 64,
-                                   width: size.width, height: size.height),
-                            display: true)
-        }
-    }
 }
 
 let app = NSApplication.shared

@@ -3,6 +3,24 @@
     <channel>
         <title>QuotaPing</title>
         <item>
+            <title>1.2.0</title>
+            <pubDate>Thu, 17 Sep 2026 21:15:23 +0800</pubDate>
+            <link>https://github.com/gordonbeijing/QuotaPing</link>
+            <sparkle:version>3</sparkle:version>
+            <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown"><![CDATA[# QuotaPing 1.2.0
+
+- 移除常驻桌面的悬浮窗，仅在菜单栏展示状态。
+- 新增 Intel 芯片支持，单一 Universal 2 安装包同时兼容 Apple Silicon 和 Intel Mac。
+- 优化编译与归档方式，减少通用版安装包的体积增幅。
+]]></description>
+            <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.0/QuotaPing-1.2.0-macOS-universal.zip" length="1224741" type="application/octet-stream" sparkle:edSignature="i9df38YzdgIuvXiJOD1MvrASZiUgoZG4N8F7xJf5hEfuiXI/BLBvvknRDulFD0eMacDWjMje7Huj+gBWBFGODw=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.0/QuotaPing3-2.delta" sparkle:deltaFrom="2" length="110354" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="M9WGHQyxB9b+/FQbG55IX3LXuIIXZ13AGayqShwz89Lgd5YySNQMfMLMyxJOxCT3JW0C+lSnK3nqADQYRJH+Bw=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.1.0</title>
             <pubDate>Thu, 17 Sep 2026 17:58:53 +0800</pubDate>
             <link>https://github.com/gordonbeijing/QuotaPing</link>

@@ -8,18 +8,16 @@
 	<string>QuotaPing</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.local.quotaping</string>
-	<key>CFBundleIconName</key>
-	<string>AppIcon</string>
 	<key>CFBundleIconFile</key>
-	<string>AppIcon</string>
+	<string>AppIcon.icns</string>
 	<key>CFBundleExecutable</key>
 	<string>QuotaPing</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.1.0</string>
+	<string>1.2.0</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/gordonbeijing/QuotaPing/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>
