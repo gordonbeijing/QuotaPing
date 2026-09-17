@@ -51,7 +51,10 @@ cp DISTRIBUTION_INSTALL.md "$PACKAGE_DIR/安装说明.md"
 chmod +x "$PACKAGE_DIR/安装 QuotaPing.command"
 rm -f "$INSTALLER_ARCHIVE"
 ditto -c -k --keepParent "$PACKAGE_DIR" "$INSTALLER_ARCHIVE"
-shasum -a 256 "$INSTALLER_ARCHIVE" > "$INSTALLER_ARCHIVE.sha256"
+(
+  cd "$DIST_DIR"
+  shasum -a 256 "$INSTALLER_NAME" > "$INSTALLER_NAME.sha256"
+)
 
 echo "==> 更新包：$ARCHIVE"
 echo "==> 用户安装包：$INSTALLER_ARCHIVE"
