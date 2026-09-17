@@ -1,0 +1,11 @@
+.DS_Store
+.build/
+Vendor/
+QuotaPing.app/
+*.bin
+dist/
+updates/*.zip
+updates/*.dmg
+updates/*.md
+updates/old_updates/
+Assets/GooglePing-AppIcon*.png
