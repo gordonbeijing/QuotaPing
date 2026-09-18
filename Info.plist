@@ -15,9 +15,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2.5</string>
+	<string>1.2.6</string>
 	<key>CFBundleVersion</key>
-	<string>8</string>
+	<string>9</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
@@ -29,10 +29,12 @@
 	<key>SUAllowsAutomaticUpdates</key>
 	<true/>
 	<key>SUEnableAutomaticChecks</key>
-	<true/>
+	<false/>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/gordonbeijing/QuotaPing/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>tlncBQRIOhRlN1SKOwDZ6GAHd/eZuPLI2cLFDGO3F+w=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>172800</integer>
 </dict>
 </plist>

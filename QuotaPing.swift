@@ -1262,6 +1262,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let quota = QuotaEngine()
     private var statusBar: StatusBarController!
     private var updaterController: SPUStandardUpdaterController!
+    private var updateCheckTimer: Timer?
+
+    private func setupCustomUpdateChecker() {
+        checkCustomUpdate()
+        updateCheckTimer = Timer.scheduledTimer(withTimeInterval: 172800, repeats: true) { [weak self] _ in
+            self?.checkCustomUpdate()
+        }
+    }
+
+    private func checkCustomUpdate() {
+        guard let url = URL(string: "https://raw.githubusercontent.com/gordonbeijing/QuotaPing/main/appcast.xml") else { return }
+        var req = URLRequest(url: url)
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        URLSession.shared.dataTask(with: req) { [weak self] data, _, _ in
+            guard let data = data, let xml = String(data: data, encoding: .utf8) else { return }
+            if let range = xml.range(of: "sparkle:version=\"") {
+                let sub = xml[range.upperBound...]
+                if let endRange = sub.range(of: "\"") {
+                    let version = String(sub[..<endRange.lowerBound])
+                    DispatchQueue.main.async {
+                        self?.handleDiscoveredVersion(version)
+                    }
+                }
+            }
+        }.resume()
+    }
+
+    private func handleDiscoveredVersion(_ version: String) {
+        let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        guard version.compare(current, options: .numeric) == .orderedDescending else { return }
+        
+        let prompted = UserDefaults.standard.string(forKey: "LastPromptedUpdateVersion")
+        if prompted != version {
+            UserDefaults.standard.set(version, forKey: "LastPromptedUpdateVersion")
+            updaterController.checkForUpdates(nil)
+        }
+    }
 
     func applicationDidFinishLaunching(_ note: Notification) {
         AppLogger.log("App 启动: QuotaPing")
@@ -1289,6 +1326,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         ping.start(interval: Prefs.pingInterval)
         quota.start(interval: Prefs.quotaInterval)
+        setupCustomUpdateChecker()
 
         if !Prefs.hasShownHelp {
             Prefs.hasShownHelp = true
