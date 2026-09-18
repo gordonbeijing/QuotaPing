@@ -2,30 +2,22 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleName</key>
-	<string>QuotaPing</string>
 	<key>CFBundleDisplayName</key>
 	<string>QuotaPing</string>
-	<key>CFBundleIdentifier</key>
-	<string>com.local.quotaping</string>
+	<key>CFBundleExecutable</key>
+	<string>QuotaPing</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon.icns</string>
-	<key>CFBundleExecutable</key>
+	<key>CFBundleIdentifier</key>
+	<string>com.local.quotaping</string>
+	<key>CFBundleName</key>
 	<string>QuotaPing</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2.1</string>
+	<string>1.2.2</string>
 	<key>CFBundleVersion</key>
-	<string>4</string>
-	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/gordonbeijing/QuotaPing/main/appcast.xml</string>
-	<key>SUPublicEDKey</key>
-	<string>tlncBQRIOhRlN1SKOwDZ6GAHd/eZuPLI2cLFDGO3F+w=</string>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUAllowsAutomaticUpdates</key>
-	<true/>
+	<string>5</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
@@ -34,5 +26,13 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUAllowsAutomaticUpdates</key>
+	<true/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/gordonbeijing/QuotaPing/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>tlncBQRIOhRlN1SKOwDZ6GAHd/eZuPLI2cLFDGO3F+w=</string>
 </dict>
 </plist>

@@ -3,6 +3,25 @@
     <channel>
         <title>QuotaPing</title>
         <item>
+            <title>1.2.2</title>
+            <pubDate>Fri, 18 Sep 2026 13:00:41 +0800</pubDate>
+            <link>https://github.com/gordonbeijing/QuotaPing</link>
+            <sparkle:version>5</sparkle:version>
+            <sparkle:shortVersionString>1.2.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown"><![CDATA[# QuotaPing 1.2.2
+
+- 修复由于 URLSession 默认缓存导致的额度刷新展示问题，确保每次都能拉取到最新额度。
+- 修复因 OpenAI 服务端变更导致的登录凭证（Token）主动刷新失败的问题（HTTP 400）。
+]]></description>
+            <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.2/QuotaPing-1.2.2-macOS-universal.zip" length="1351085" type="application/octet-stream" sparkle:edSignature="TeyEsPEUEOkS6ORrcDudfwta57krHsJiBrsLT1cD9JNy+L7qppgsY851H8oAEILdW2xNpvSR6XTqNsVbCLXDDA=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.2/QuotaPing5-4.delta" sparkle:deltaFrom="4" length="26922" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="HxXJsGaXP9w1T6o2VaALhG8Cs8BlH0Yhb4u1pCFWOhWNk7FFuwtG8PSBV+9wYuAsbLYiUS41zDOiNIFCgb3KDA=="/>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.2/QuotaPing5-3.delta" sparkle:deltaFrom="3" length="58698" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="fGYF9QfEmG+bbxfx07FDnWHxf2tLwgHuyz6Cb0WPvZNZUaqn4UYIkHMSxgpSdrRc+tBlEbqVJtkfNpBCuK0DCg=="/>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.2/QuotaPing5-2.delta" sparkle:deltaFrom="2" length="108874" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="0ffuwaiZvDxorjAjWqJqGSw6crBa2Z3NXCHzgOktAC0z4PRh9xQbQWoeEt9ztPhSBWAvAAHfw1Wjf5YyeiYwCA=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.2.1</title>
             <pubDate>Thu, 17 Sep 2026 22:20:47 +0800</pubDate>
             <link>https://github.com/gordonbeijing/QuotaPing</link>

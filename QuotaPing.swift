@@ -475,6 +475,7 @@ final class QuotaEngine: ObservableObject {
         inFlight = true
         var req = URLRequest(url: usageURL)
         req.timeoutInterval = 10
+        req.cachePolicy = .reloadIgnoringLocalCacheData
         req.setValue("Bearer \(a.accessToken)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         if let aid = a.accountId {
@@ -495,6 +496,7 @@ final class QuotaEngine: ObservableObject {
                     if let data { self.handle(data) }
                     else if !self.hasLoaded { self.status = .unavailable(reason: "空响应") }
                 case 401, 403:
+                    if debugMode { NSLog("QuotaPing quota: HTTP \(code), calling refreshTokens") }
                     self.refreshTokens { [weak self] ok in
                         guard let self else { return }
                         if ok {
@@ -550,16 +552,18 @@ final class QuotaEngine: ObservableObject {
             done(false)
             return
         }
-        var comps = URLComponents(url: tokenURL, resolvingAgainstBaseURL: false)!
-        comps.queryItems = [
-            URLQueryItem(name: "grant_type", value: "refresh_token"),
-            URLQueryItem(name: "client_id", value: clientId),
-            URLQueryItem(name: "refresh_token", value: rt),
-        ]
-        var req = URLRequest(url: comps.url!)
+        var req = URLRequest(url: tokenURL)
         req.httpMethod = "POST"
         req.timeoutInterval = 15
-        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: String] = [
+            "grant_type": "refresh_token",
+            "client_id": clientId,
+            "refresh_token": rt
+        ]
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
         URLSession.shared.dataTask(with: req) { [weak self] data, resp, err in
             DispatchQueue.main.async {
                 var ok = false
