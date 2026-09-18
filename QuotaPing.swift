@@ -580,9 +580,17 @@ final class QuotaEngine: ObservableObject {
         if let c = obj["credits"] as? [String: Any], (c["has_credits"] as? Bool) == true {
             credits = (c["balance"] as? NSNumber)?.doubleValue
         }
+        var five = win("primary_window")
+        var week = win("secondary_window")
+        
+        if plan.lowercased() == "pro" {
+            week = win("primary_window")
+            five = win("secondary_window")
+        }
+
         status = .ok(plan: plan,
-                     fiveHour: win("primary_window"),
-                     weekly: win("secondary_window"),
+                     fiveHour: five,
+                     weekly: week,
                      credits: credits)
         hasLoaded = true
         if debugMode { NSLog("QuotaPing quota: \(status.debugDescription)") }
@@ -1199,7 +1207,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
                 lines.append("5 小时：剩 \(five.remainingPercent)% · \(resetLabel(five.resetAt))")
             }
             if let week {
-                lines.append("每周：剩 \(week.remainingPercent)% · \(resetLabel(week.resetAt))")
+                lines.append("1周：剩 \(week.remainingPercent)% · \(resetLabel(week.resetAt))")
             }
             if let credits, credits > 0 { lines.append("credits：\(Int(credits))") }
             if five == nil && week == nil { lines.append("（接口未返回限额数据）") }
