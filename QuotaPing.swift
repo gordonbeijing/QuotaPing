@@ -15,6 +15,33 @@ import Sparkle
 let debugMode = ProcessInfo.processInfo.environment["QUOTAPING_DEBUG"] != nil
     || ProcessInfo.processInfo.environment["GOOGLEPING_DEBUG"] != nil
 
+struct AppLogger {
+    static let logURL: URL = {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let dir = docs.appendingPathComponent("QuotaPing", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("QuotaPing.log")
+    }()
+    
+    static func log(_ message: String) {
+        if debugMode { NSLog("QuotaPing: %@", message) }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let line = "[\(formatter.string(from: Date()))] \(message)\n"
+        if let data = line.data(using: .utf8) {
+            if FileManager.default.fileExists(atPath: logURL.path) {
+                if let handle = try? FileHandle(forWritingTo: logURL) {
+                    handle.seekToEndOfFile()
+                    handle.write(data)
+                    handle.closeFile()
+                }
+            } else {
+                try? data.write(to: logURL)
+            }
+        }
+    }
+}
+
 /// 重置时间文案：<24h 显示倒计时，否则显示日期（中文）
 func resetLabel(_ date: Date) -> String {
     let secs = date.timeIntervalSinceNow
@@ -120,7 +147,20 @@ enum NetworkIndicatorState {
 }
 
 final class ReachabilityEngine: ObservableObject {
-    @Published private(set) var status: NetStatus = .idle
+    @Published private(set) var status: NetStatus = .idle {
+        didSet {
+            if status != oldValue {
+                switch status {
+                case .fail(let reason): AppLogger.log("连通检测失败：\(reason)")
+                case .slow(let rtt): AppLogger.log("连通检测缓慢：\(Int(rtt))ms")
+                case .ok(let rtt):
+                    if case .fail = oldValue { AppLogger.log("网络恢复：\(Int(rtt))ms") }
+                    else if case .slow = oldValue { AppLogger.log("网络恢复：\(Int(rtt))ms") }
+                default: break
+                }
+            }
+        }
+    }
     @Published private(set) var lastChecked: Date?
     @Published private(set) var failureLogs: [NetworkFailureLog] = ReachabilityEngine.loadFailureLogs()
 
@@ -379,6 +419,7 @@ final class QuotaEngine: ObservableObject {
         }
         auth = nil
         if !hasLoaded {
+            AppLogger.log("额度刷新失败：未找到 Codex 登录凭据（需 codex login）")
             status = .unavailable(reason: "未找到 Codex 登录凭据（需 codex login）")
         }
     }
@@ -485,17 +526,22 @@ final class QuotaEngine: ObservableObject {
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.inFlight = false
-                if err != nil {
+                if let err = err {
+                    AppLogger.log("接口请求网络错误: \(err.localizedDescription)")
                     if !self.hasLoaded { self.status = .unavailable(reason: "网络错误") }
-                    if debugMode { NSLog("QuotaPing quota: 请求失败 \(err?.localizedDescription ?? "")") }
+                    if debugMode { NSLog("QuotaPing quota: 请求失败 \(err.localizedDescription)") }
                     return
                 }
                 let code = (resp as? HTTPURLResponse)?.statusCode ?? -1
                 switch code {
                 case 200:
                     if let data { self.handle(data) }
-                    else if !self.hasLoaded { self.status = .unavailable(reason: "空响应") }
+                    else {
+                        AppLogger.log("接口响应空数据")
+                        if !self.hasLoaded { self.status = .unavailable(reason: "空响应") }
+                    }
                 case 401, 403:
+                    AppLogger.log("接口 HTTP \(code)，尝试刷新凭证...")
                     if debugMode { NSLog("QuotaPing quota: HTTP \(code), calling refreshTokens") }
                     self.refreshTokens { [weak self] ok, expired in
                         guard let self else { return }
@@ -548,6 +594,7 @@ final class QuotaEngine: ObservableObject {
         guard let a = auth,
               let s = a.rawJSON["tokens"] as? [String: Any],
               let rt = s["refresh_token"] as? String else {
+            AppLogger.log("凭证刷新失败：无 refresh_token")
             if debugMode { NSLog("QuotaPing quota: 无 refresh_token，无法刷新") }
             done(false, true)
             return
@@ -584,9 +631,11 @@ final class QuotaEngine: ObservableObject {
                     newAuth.refreshToken = tokens["refresh_token"] as? String
                     self?.auth = newAuth
                     ok = true
+                    AppLogger.log("凭证刷新成功")
                     if debugMode { NSLog("QuotaPing quota: token 刷新成功") }
                 } else {
                     let code = (resp as? HTTPURLResponse)?.statusCode ?? -1
+                    AppLogger.log("凭证刷新失败，HTTP: \(code)")
                     if code >= 400 && code < 500 {
                         expired = true
                         self?.auth = nil
@@ -1091,6 +1140,11 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         logs.target = self
         menu.addItem(logs)
 
+        let exportLogs = NSMenuItem(title: "导出运行日志…",
+                                    action: #selector(exportAppLogs), keyEquivalent: "e")
+        exportLogs.target = self
+        menu.addItem(exportLogs)
+
         menu.addItem(.separator())
         let updates = NSMenuItem(
             title: "检查更新…",
@@ -1174,6 +1228,24 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         logWindow.show()
     }
 
+    @objc private func exportAppLogs() {
+        let panel = NSSavePanel()
+        panel.title = "导出 QuotaPing 运行日志"
+        panel.nameFieldStringValue = "QuotaPing_\(Int(Date().timeIntervalSince1970)).log"
+        panel.allowedContentTypes = [.log, .plainText]
+        panel.canCreateDirectories = true
+        
+        NSApp.activate(ignoringOtherApps: true)
+        
+        if panel.runModal() == .OK, let url = panel.url {
+            if FileManager.default.fileExists(atPath: AppLogger.logURL.path) {
+                try? FileManager.default.copyItem(at: AppLogger.logURL, to: url)
+            } else {
+                try? "暂无日志记录\n".write(to: url, atomically: true, encoding: .utf8)
+            }
+        }
+    }
+
     @objc func showHelp() {
         helpWindow.show()
     }
@@ -1192,6 +1264,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var updaterController: SPUStandardUpdaterController!
 
     func applicationDidFinishLaunching(_ note: Notification) {
+        AppLogger.log("App 启动: QuotaPing")
         NSApp.setActivationPolicy(.accessory)
         Prefs.migrateLegacyDefaultsIfNeeded()
 
