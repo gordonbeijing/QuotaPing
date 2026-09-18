@@ -440,10 +440,10 @@ final class QuotaEngine: ObservableObject {
         }
         // access_token 是短期 JWT：距上次刷新超 8 天先主动刷新
         if let lr = lastRefresh(of: a), Date().timeIntervalSince(lr) > 8 * 24 * 3600 {
-            refreshTokens { [weak self] ok in
+            refreshTokens { [weak self] ok, expired in
                 guard let self else { return }
                 if ok { self.writeBackAuth(); self.doFetch() }
-                else if !self.hasLoaded {
+                else if expired {
                     self.status = .unavailable(reason: "登录已过期，请重新运行 codex login")
                 }
             }
@@ -497,12 +497,12 @@ final class QuotaEngine: ObservableObject {
                     else if !self.hasLoaded { self.status = .unavailable(reason: "空响应") }
                 case 401, 403:
                     if debugMode { NSLog("QuotaPing quota: HTTP \(code), calling refreshTokens") }
-                    self.refreshTokens { [weak self] ok in
+                    self.refreshTokens { [weak self] ok, expired in
                         guard let self else { return }
                         if ok {
                             self.writeBackAuth()
                             self.doFetch()      // 重试一次
-                        } else if !self.hasLoaded {
+                        } else if expired {
                             self.status = .unavailable(reason: "登录已过期，请重新运行 codex login")
                         }
                     }
@@ -544,12 +544,12 @@ final class QuotaEngine: ObservableObject {
 
     // MARK: token 刷新（auth.openai.com）
 
-    private func refreshTokens(_ done: @escaping (Bool) -> Void) {
+    private func refreshTokens(_ done: @escaping (_ ok: Bool, _ expired: Bool) -> Void) {
         guard let a = auth,
               let s = a.rawJSON["tokens"] as? [String: Any],
               let rt = s["refresh_token"] as? String else {
             if debugMode { NSLog("QuotaPing quota: 无 refresh_token，无法刷新") }
-            done(false)
+            done(false, true)
             return
         }
         var req = URLRequest(url: tokenURL)
@@ -567,6 +567,7 @@ final class QuotaEngine: ObservableObject {
         URLSession.shared.dataTask(with: req) { [weak self] data, resp, err in
             DispatchQueue.main.async {
                 var ok = false
+                var expired = false
                 if err == nil, let data,
                    let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let at = obj["access_token"] as? String {
@@ -586,11 +587,15 @@ final class QuotaEngine: ObservableObject {
                     if debugMode { NSLog("QuotaPing quota: token 刷新成功") }
                 } else {
                     let code = (resp as? HTTPURLResponse)?.statusCode ?? -1
+                    if code >= 400 && code < 500 {
+                        expired = true
+                        self?.auth = nil
+                    }
                     if debugMode {
                         NSLog("QuotaPing quota: 刷新失败 HTTP \(code) \(err?.localizedDescription ?? "")")
                     }
                 }
-                done(ok)
+                done(ok, expired)
             }
         }.resume()
     }

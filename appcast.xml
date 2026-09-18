@@ -3,6 +3,25 @@
     <channel>
         <title>QuotaPing</title>
         <item>
+            <title>1.2.3</title>
+            <pubDate>Fri, 18 Sep 2026 13:19:57 +0800</pubDate>
+            <link>https://github.com/gordonbeijing/QuotaPing</link>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown"><![CDATA[# QuotaPing 1.2.3
+
+- 修复 Token 刷新失败或过期后由于旧凭证驻留内存，导致手动刷新时无法自动加载新凭证并自愈的问题。
+]]></description>
+            <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.3/QuotaPing-1.2.3-macOS-universal.zip" length="1351213" type="application/octet-stream" sparkle:edSignature="tpuF5x02SsP+yuHGx4qEoj94yBcEZjWruGJvEyIJqKp1awVuKaLgPLk7UyY6k4FGjWMZoredmoOpUV+GTkxoBg=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.3/QuotaPing6-5.delta" sparkle:deltaFrom="5" length="21910" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="/V2o59fH8dLB5AJ6i5YFgDCCXzOY/MXzldjuwB9azsNFt78wnRTJYdiIzSJmh1o8Xhsd+nIOCXq8T4BsCJTyDQ=="/>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.3/QuotaPing6-4.delta" sparkle:deltaFrom="4" length="32898" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="9vS9NUmGy6EZOTaqM+Ut3XEwJdRyS5BKGb1kyRdGFR0oB/0L3pooSba9I4KssLuec0Mc7lO69/TZ1dI/LVNRBA=="/>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.3/QuotaPing6-3.delta" sparkle:deltaFrom="3" length="64682" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="Gccf5hiiQ29nuw7C+s9tswX/k4BlSo4ZpjOp0t0u0wcymvu47NLiBSjm7rXl5HEhnn4lMsBJjpH3EV7In0gmBw=="/>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.3/QuotaPing6-2.delta" sparkle:deltaFrom="2" length="109418" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="Bt6+xOeg9/L8XgHNg13yErQOOq//yn9SIbdboYRLVC/4tOinkltzRtlf1YorZfVJXcRdRYgX58KoxG9qfBJgCQ=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.2.2</title>
             <pubDate>Fri, 18 Sep 2026 13:00:41 +0800</pubDate>
             <link>https://github.com/gordonbeijing/QuotaPing</link>
@@ -38,24 +57,6 @@
             <sparkle:deltas>
                 <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.1/QuotaPing4-3.delta" sparkle:deltaFrom="3" length="32670" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="biRr6S4szS+2oH8bOXosU39UcLIemkGmsaUDTMcqlzw7DZzXLjgrt3KljxRh3WstnDyscZXN6S5Sw5ywbQzQDA=="/>
                 <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.1/QuotaPing4-2.delta" sparkle:deltaFrom="2" length="108286" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="WH953FVLoAjxwZXjCZlBCXwVVCH/ikOvEmhUtmGencP9CKMLzwOpk8KksOlN8EkM6zSBpG+M+2+It5PcWelkBg=="/>
-            </sparkle:deltas>
-        </item>
-        <item>
-            <title>1.2.0</title>
-            <pubDate>Thu, 17 Sep 2026 21:15:23 +0800</pubDate>
-            <link>https://github.com/gordonbeijing/QuotaPing</link>
-            <sparkle:version>3</sparkle:version>
-            <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description sparkle:format="markdown"><![CDATA[# QuotaPing 1.2.0
-
-- 移除常驻桌面的悬浮窗，仅在菜单栏展示状态。
-- 新增 Intel 芯片支持，单一 Universal 2 安装包同时兼容 Apple Silicon 和 Intel Mac。
-- 优化编译与归档方式，减少通用版安装包的体积增幅。
-]]></description>
-            <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.0/QuotaPing-1.2.0-macOS-universal.zip" length="1224741" type="application/octet-stream" sparkle:edSignature="i9df38YzdgIuvXiJOD1MvrASZiUgoZG4N8F7xJf5hEfuiXI/BLBvvknRDulFD0eMacDWjMje7Huj+gBWBFGODw=="/>
-            <sparkle:deltas>
-                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.0/QuotaPing3-2.delta" sparkle:deltaFrom="2" length="110354" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="M9WGHQyxB9b+/FQbG55IX3LXuIIXZ13AGayqShwz89Lgd5YySNQMfMLMyxJOxCT3JW0C+lSnK3nqADQYRJH+Bw=="/>
             </sparkle:deltas>
         </item>
         <item>
