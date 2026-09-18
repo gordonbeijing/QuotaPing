@@ -3,6 +3,26 @@
     <channel>
         <title>QuotaPing</title>
         <item>
+            <title>1.2.4</title>
+            <pubDate>Fri, 18 Sep 2026 13:43:56 +0800</pubDate>
+            <link>https://github.com/gordonbeijing/QuotaPing</link>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>1.2.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown"><![CDATA[# QuotaPing 1.2.4
+
+- 优化菜单栏 UI 布局逻辑：当用户所处套餐（如免费/团队等特定套餐）只返回单个限额周期（如仅有每周额度，无 5h 额度）时，自动隐藏无意义的竖线分隔和破折号，将额度数据优雅居中显示。
+]]></description>
+            <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.4/QuotaPing-1.2.4-macOS-universal.zip" length="1351655" type="application/octet-stream" sparkle:edSignature="qNwSWhMkzKK1LwnsFGI1DycZ1DpVarbXGZ5kUzwloqpEiiT6JS5ASmQd9JfKugYnngUqJmArrSavCZfsQ4wMDw=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.4/QuotaPing7-6.delta" sparkle:deltaFrom="6" length="28074" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="vR3AZO104c/mVLS393R/ucoZ7ubvNnh7JqUuEZOZSfRbJuGNHYXtvVY6tOCs7Tpb7Z9WRwbYOfpVQ6sayEttBQ=="/>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.4/QuotaPing7-5.delta" sparkle:deltaFrom="5" length="31930" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="INAkaLsN+Z7bw5DxXHziheFIfk84KgbDjZZ1BiWAcGhLXTEL4JC0EiuxGBRY6bCbowCaRgXiGm2RoerCIQpIAw=="/>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.4/QuotaPing7-4.delta" sparkle:deltaFrom="4" length="39374" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="vn13A1zRW+RshbFUlZgZHLkCLdcMUMj+d7aKv2OGALv11Q8wU8v6E+SjBmqjkkFjq5zvCZcpM3lrWyh7lku1CA=="/>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.4/QuotaPing7-3.delta" sparkle:deltaFrom="3" length="71142" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="MTP4n7iJzZfK+m1oL96i4R9B+/b8YW1ywZGk5PP0LVf+K0PNGVlSvw216rTVMuEfZ5UxpzC3+NXytvzsQmtRBw=="/>
+                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.4/QuotaPing7-2.delta" sparkle:deltaFrom="2" length="110074" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="ASGa/ViwTw+jyI2hLpePJMX9ph+a8UMeR7jGwj0AsDNxI3YLTht24ib50XJYVQ9vBcARbv/gln9lmpX71253CA=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.2.3</title>
             <pubDate>Fri, 18 Sep 2026 13:19:57 +0800</pubDate>
             <link>https://github.com/gordonbeijing/QuotaPing</link>
@@ -38,25 +58,6 @@
                 <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.2/QuotaPing5-4.delta" sparkle:deltaFrom="4" length="26922" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="HxXJsGaXP9w1T6o2VaALhG8Cs8BlH0Yhb4u1pCFWOhWNk7FFuwtG8PSBV+9wYuAsbLYiUS41zDOiNIFCgb3KDA=="/>
                 <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.2/QuotaPing5-3.delta" sparkle:deltaFrom="3" length="58698" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="fGYF9QfEmG+bbxfx07FDnWHxf2tLwgHuyz6Cb0WPvZNZUaqn4UYIkHMSxgpSdrRc+tBlEbqVJtkfNpBCuK0DCg=="/>
                 <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.2/QuotaPing5-2.delta" sparkle:deltaFrom="2" length="108874" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="0ffuwaiZvDxorjAjWqJqGSw6crBa2Z3NXCHzgOktAC0z4PRh9xQbQWoeEt9ztPhSBWAvAAHfw1Wjf5YyeiYwCA=="/>
-            </sparkle:deltas>
-        </item>
-        <item>
-            <title>1.2.1</title>
-            <pubDate>Thu, 17 Sep 2026 22:20:47 +0800</pubDate>
-            <link>https://github.com/gordonbeijing/QuotaPing</link>
-            <sparkle:version>4</sparkle:version>
-            <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description sparkle:format="markdown"><![CDATA[# QuotaPing 1.2.1
-
-- 新增用户级安装脚本，默认安装到 `~/Applications`，避免系统级目录对 ad-hoc 应用的额外拦截。
-- 安装时自动清理下载隔离属性、校验签名、备份旧版本并启动应用。
-- 修正 Sparkle.framework 归档方式，完整保留符号链接和嵌套 helper 签名。
-]]></description>
-            <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.1/QuotaPing-1.2.1-macOS-universal.zip" length="1350675" type="application/octet-stream" sparkle:edSignature="dkkeR0C5TgJPgaAG7oulMjq/XoNEcihFEo9haVxbUoE/zACEMrVUS/pQPJNt7mTtd+CKr87xfBN5r3DyNRBDBQ=="/>
-            <sparkle:deltas>
-                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.1/QuotaPing4-3.delta" sparkle:deltaFrom="3" length="32670" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="biRr6S4szS+2oH8bOXosU39UcLIemkGmsaUDTMcqlzw7DZzXLjgrt3KljxRh3WstnDyscZXN6S5Sw5ywbQzQDA=="/>
-                <enclosure url="https://github.com/gordonbeijing/QuotaPing/releases/download/v1.2.1/QuotaPing4-2.delta" sparkle:deltaFrom="2" length="108286" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976240" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="WH953FVLoAjxwZXjCZlBCXwVVCH/ikOvEmhUtmGencP9CKMLzwOpk8KksOlN8EkM6zSBpG+M+2+It5PcWelkBg=="/>
             </sparkle:deltas>
         </item>
         <item>

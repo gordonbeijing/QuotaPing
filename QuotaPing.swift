@@ -812,19 +812,38 @@ enum StatusIconRenderer {
     ) -> NSImage {
         let five = fiveHourPercent.map { max(0, min(100, $0)) }
         let weekly = weeklyPercent.map { max(0, min(100, $0)) }
+        
+        let hasFive = five != nil
+        let hasWeekly = weekly != nil
+        let width: CGFloat = (hasFive && hasWeekly) ? 88 : 50
+        let size = NSSize(width: width, height: 22)
 
         let image = NSImage(size: size, flipped: false) { _ in
             NSGraphicsContext.saveGraphicsState()
             defer { NSGraphicsContext.restoreGraphicsState() }
 
             drawReachability(networkState)
-            drawQuotaColumn(leftX: 24,
-                            topText: fiveHourResetAt.map(timeLabel) ?? "--:--",
-                            remaining: five)
-            drawDivider()
-            drawQuotaColumn(leftX: 59,
-                            topText: weeklyResetAt.map(weekdayLabel) ?? "---",
-                            remaining: weekly)
+            
+            if hasFive && hasWeekly {
+                drawQuotaColumn(leftX: 24,
+                                topText: fiveHourResetAt.map(timeLabel) ?? "--:--",
+                                remaining: five)
+                drawDivider()
+                drawQuotaColumn(leftX: 59,
+                                topText: weeklyResetAt.map(weekdayLabel) ?? "---",
+                                remaining: weekly)
+            } else if hasWeekly {
+                drawQuotaColumn(leftX: 24,
+                                topText: weeklyResetAt.map(weekdayLabel) ?? "---",
+                                remaining: weekly)
+            } else if hasFive {
+                drawQuotaColumn(leftX: 24,
+                                topText: fiveHourResetAt.map(timeLabel) ?? "--:--",
+                                remaining: five)
+            } else {
+                drawQuotaColumn(leftX: 24, topText: "---", remaining: nil)
+            }
+            
             return true
         }
         // 作为菜单栏模板图像，由 macOS 根据深浅色和选中状态统一着色。
@@ -899,6 +918,31 @@ enum StatusIconRenderer {
                        width: measured.width, height: measured.height),
             withAttributes: attributes
         )
+    }
+
+    private static func drawCenteredText(
+        _ text: String, centerX: CGFloat, originY: CGFloat, font: NSFont, color: NSColor
+    ) {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: color,
+        ]
+        let measured = (text as NSString).size(withAttributes: attributes)
+        (text as NSString).draw(
+            in: NSRect(x: centerX - measured.width / 2, y: originY,
+                       width: measured.width, height: measured.height),
+            withAttributes: attributes
+        )
+    }
+
+    private static func drawCenteredColumn(centerX: CGFloat, topText: String, remaining: Int?) {
+        let topFont = NSFont.monospacedDigitSystemFont(ofSize: 7.8, weight: .medium)
+        let bottomFont = NSFont.monospacedDigitSystemFont(ofSize: 10.8, weight: .semibold)
+        drawCenteredText(topText, centerX: centerX, originY: 12.3, font: topFont,
+                         color: NSColor.labelColor.withAlphaComponent(0.72))
+        drawCenteredText(remaining.map { "\($0)%" } ?? "—%",
+                         centerX: centerX, originY: 0, font: bottomFont,
+                         color: .labelColor)
     }
 
     private static func drawDivider() {
@@ -991,6 +1035,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             weekly = week?.remainingPercent
             weeklyResetAt = week?.resetAt
         }
+
         let image = StatusIconRenderer.image(
             fiveHourPercent: fiveHour,
             fiveHourResetAt: fiveHourResetAt,
@@ -1000,6 +1045,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         )
         item.button?.title = ""
         item.button?.image = image
+        item.length = image.size.width + 4
         item.button?.toolTip = image.accessibilityDescription
     }
 
