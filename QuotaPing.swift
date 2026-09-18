@@ -6,7 +6,6 @@
 import AppKit
 import SwiftUI
 import Combine
-import Security
 import CoreGraphics
 import Sparkle
 
@@ -357,33 +356,230 @@ enum QuotaStatus: Equatable {
     }
 }
 
-/// Codex CLI 凭据（保留原始 JSON 以便刷新后原样写回，不丢其他字段）
-struct CodexAuth {
-    var accessToken: String
-    var refreshToken: String?
-    var accountId: String?
-    var rawJSON: [String: Any]
-    var fileURL: URL?
+enum CodexAppServerError: LocalizedError {
+    case executableNotFound
+    case launchFailed(String)
+    case exited(String)
+    case timedOut
+    case invalidResponse
+    case rpc(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .executableNotFound:
+            return "未找到 Codex，请安装或更新 ChatGPT/Codex"
+        case .launchFailed(let detail):
+            return "Codex 服务启动失败：\(detail)"
+        case .exited(let detail):
+            return detail.isEmpty ? "Codex 服务已退出" : "Codex 服务已退出：\(detail)"
+        case .timedOut:
+            return "Codex 服务响应超时"
+        case .invalidResponse:
+            return "Codex 服务响应格式异常"
+        case .rpc(let message):
+            let lower = message.lowercased()
+            if lower.contains("unauthorized") || lower.contains("auth") || lower.contains("login") {
+                return "Codex 登录已过期，请在 ChatGPT/Codex 中重新登录"
+            }
+            return "Codex 服务错误：\(message)"
+        }
+    }
+}
+
+struct CodexRateLimitResult {
+    let account: [String: Any]?
+    let limits: [String: Any]
+}
+
+/// 对官方 `codex app-server` 做一次短连接 JSON-RPC 查询。
+/// 认证、token 刷新和上游额度请求均由 Codex 负责，QuotaPing 不接触登录凭据。
+final class CodexRateLimitRequest {
+    typealias Completion = (Result<CodexRateLimitResult, Error>) -> Void
+
+    private let executableURL: URL
+    private let completion: Completion
+    private let process = Process()
+    private let inputPipe = Pipe()
+    private let outputPipe = Pipe()
+    private let errorPipe = Pipe()
+    private var outputBuffer = Data()
+    private var errorBuffer = Data()
+    private var account: [String: Any]?
+    private var accountReadCompleted = false
+    private var limits: [String: Any]?
+    private var finished = false
+    private var timeoutWorkItem: DispatchWorkItem?
+
+    init(executableURL: URL, completion: @escaping Completion) {
+        self.executableURL = executableURL
+        self.completion = completion
+    }
+
+    func start() {
+        process.executableURL = executableURL
+        process.arguments = ["app-server", "--stdio"]
+        process.standardInput = inputPipe
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            self?.receive(handle.availableData)
+        }
+        errorPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            self?.receiveError(handle.availableData)
+        }
+        process.terminationHandler = { [weak self] process in
+            DispatchQueue.main.async {
+                guard let self, !self.finished else { return }
+                let detail = self.safeErrorText()
+                self.finish(.failure(CodexAppServerError.exited(detail)))
+            }
+        }
+
+        do {
+            try process.run()
+        } catch {
+            finish(.failure(CodexAppServerError.launchFailed(error.localizedDescription)))
+            return
+        }
+
+        send([
+            "method": "initialize",
+            "id": 0,
+            "params": [
+                "clientInfo": [
+                    "name": "quotaping",
+                    "title": "QuotaPing",
+                    "version": Bundle.main.object(
+                        forInfoDictionaryKey: "CFBundleShortVersionString"
+                    ) as? String ?? "unknown",
+                ]
+            ],
+        ])
+
+        let timeout = DispatchWorkItem { [weak self] in
+            self?.finish(.failure(CodexAppServerError.timedOut))
+        }
+        timeoutWorkItem = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15, execute: timeout)
+    }
+
+    func cancel() {
+        finish(.failure(CodexAppServerError.exited("查询已取消")))
+    }
+
+    private func receive(_ data: Data) {
+        guard !data.isEmpty else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.finished else { return }
+            self.outputBuffer.append(data)
+            while let newline = self.outputBuffer.firstIndex(of: 0x0A) {
+                let line = self.outputBuffer.prefix(upTo: newline)
+                self.outputBuffer.removeSubrange(...newline)
+                self.handleLine(Data(line))
+            }
+        }
+    }
+
+    private func receiveError(_ data: Data) {
+        guard !data.isEmpty else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.finished else { return }
+            self.errorBuffer.append(data)
+            if self.errorBuffer.count > 4096 {
+                self.errorBuffer.removeFirst(self.errorBuffer.count - 4096)
+            }
+        }
+    }
+
+    private func handleLine(_ data: Data) {
+        guard !data.isEmpty,
+              let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return }
+
+        if let error = message["error"] as? [String: Any] {
+            let text = (error["message"] as? String) ?? "未知 JSON-RPC 错误"
+            finish(.failure(CodexAppServerError.rpc(text)))
+            return
+        }
+
+        guard let id = (message["id"] as? NSNumber)?.intValue else { return }
+        switch id {
+        case 0:
+            send(["method": "initialized", "params": [:]])
+            send([
+                "method": "account/read",
+                "id": 1,
+                "params": ["refreshToken": false],
+            ])
+            send(["method": "account/rateLimits/read", "id": 2])
+        case 1:
+            if let result = message["result"] as? [String: Any] {
+                account = result["account"] as? [String: Any]
+            }
+            accountReadCompleted = true
+            completeIfReady()
+        case 2:
+            guard let result = message["result"] as? [String: Any] else {
+                finish(.failure(CodexAppServerError.invalidResponse))
+                return
+            }
+            limits = result
+            completeIfReady()
+        default:
+            break
+        }
+    }
+
+    private func completeIfReady() {
+        guard accountReadCompleted, let limits else { return }
+        finish(.success(CodexRateLimitResult(account: account, limits: limits)))
+    }
+
+    private func send(_ object: [String: Any]) {
+        guard !finished,
+              var data = try? JSONSerialization.data(withJSONObject: object) else { return }
+        data.append(0x0A)
+        do {
+            try inputPipe.fileHandleForWriting.write(contentsOf: data)
+        } catch {
+            finish(.failure(CodexAppServerError.exited(error.localizedDescription)))
+        }
+    }
+
+    private func safeErrorText() -> String {
+        let raw = String(data: errorBuffer, encoding: .utf8) ?? ""
+        return raw
+            .split(whereSeparator: { $0.isNewline })
+            .suffix(2)
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func finish(_ result: Result<CodexRateLimitResult, Error>) {
+        guard !finished else { return }
+        finished = true
+        timeoutWorkItem?.cancel()
+        outputPipe.fileHandleForReading.readabilityHandler = nil
+        errorPipe.fileHandleForReading.readabilityHandler = nil
+        try? inputPipe.fileHandleForWriting.close()
+        if process.isRunning { process.terminate() }
+        completion(result)
+    }
 }
 
 final class QuotaEngine: ObservableObject {
     @Published private(set) var status: QuotaStatus = .idle
 
     private var timer: Timer?
-    private var auth: CodexAuth?
-    private var inFlight = false
+    private var request: CodexRateLimitRequest?
     private var hasLoaded = false
 
     /// 由 AppDelegate 注入：连通探测失败时跳过本轮额度请求
     var isOnline: () -> Bool = { true }
 
-    private let usageURL = URL(string: "https://chatgpt.com/backend-api/wham/usage")!
-    private let tokenURL = URL(string: "https://auth.openai.com/oauth/token")!
-    private let clientId = "app_EMoamEEZ73f0CkXaXp7hrann"
-
     func start(interval: Double) {
         timer?.invalidate()
-        loadCredentials()
         fetch()
         let t = Timer.scheduledTimer(withTimeInterval: max(interval, 30), repeats: true) { [weak self] _ in
             self?.fetch()
@@ -392,269 +588,112 @@ final class QuotaEngine: ObservableObject {
         timer = t
     }
 
-    // MARK: 凭据
-
-    private func candidateURLs() -> [URL] {
-        let fm = FileManager.default
-        var urls: [URL] = []
-        if let ch = ProcessInfo.processInfo.environment["CODEX_HOME"], !ch.isEmpty {
-            urls.append(URL(fileURLWithPath: ch, isDirectory: true)
-                .appendingPathComponent("auth.json"))
-        }
-        let home = fm.homeDirectoryForCurrentUser
-        urls.append(home.appendingPathComponent(".codex/auth.json"))
-        urls.append(home.appendingPathComponent(".config/codex/auth.json"))
-        return urls
-    }
-
-    private func loadCredentials() {
-        for url in candidateURLs() {
-            guard let data = try? Data(contentsOf: url) else { continue }
-            if let a = parseAuthData(data, fileURL: url) { auth = a; return }
-        }
-        if let keyData = keychainLookup(),
-           let a = parseAuthData(keyData, fileURL: nil) {
-            auth = a
-            return
-        }
-        auth = nil
-        if !hasLoaded {
-            AppLogger.log("额度刷新失败：未找到 Codex 登录凭据（需 codex login）")
-            status = .unavailable(reason: "未找到 Codex 登录凭据（需 codex login）")
-        }
-    }
-
-    private func parseAuthData(_ data: Data, fileURL: URL?) -> CodexAuth? {
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let tokens = obj["tokens"] as? [String: Any],
-              let at = tokens["access_token"] as? String else { return nil }
-        return CodexAuth(accessToken: at,
-                         refreshToken: tokens["refresh_token"] as? String,
-                         accountId: tokens["account_id"] as? String,
-                         rawJSON: obj, fileURL: fileURL)
-    }
-
-    private func keychainLookup() -> Data? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "Codex Auth",
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-        var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess else { return nil }
-        return item as? Data
-    }
-
-    /// 刷新后原子写回 auth.json（保留其余字段，权限 0600）
-    private func writeBackAuth() {
-        guard let auth, let fileURL = auth.fileURL,
-              let data = try? JSONSerialization.data(
-                  withJSONObject: auth.rawJSON,
-                  options: [.prettyPrinted, .sortedKeys]) else { return }
-        let tmp = fileURL.deletingLastPathComponent()
-            .appendingPathComponent(".auth.json.gp.tmp")
-        do {
-            try data.write(to: tmp, options: .atomic)
-            try FileManager.default.setAttributes(
-                [.posixPermissions: 0o600], ofItemAtPath: tmp.path)
-            try FileManager.default.moveItem(at: tmp, to: fileURL)
-            if debugMode { NSLog("QuotaPing auth: 刷新后的 token 已写回 \(fileURL.lastPathComponent)") }
-        } catch {
-            if debugMode { NSLog("QuotaPing auth: 写回失败 \(error)") }
-        }
-    }
-
-    // MARK: 查询
-
     func fetchNow() { fetch() }
 
     private func fetch() {
-        guard !inFlight else { return }
+        guard request == nil else { return }
         guard isOnline() else { return }
-        if auth == nil { loadCredentials() }   // 允许运行期间 codex login 后自愈
-        guard let a = auth else {
-            if !hasLoaded {
-                status = .unavailable(reason: "未找到 Codex 登录凭据（需 codex login）")
-            }
+        guard let executable = Self.codexExecutableURL() else {
+            status = .unavailable(reason: CodexAppServerError.executableNotFound.localizedDescription)
             return
         }
-        // access_token 是短期 JWT：距上次刷新超 8 天先主动刷新
-        if let lr = lastRefresh(of: a), Date().timeIntervalSince(lr) > 8 * 24 * 3600 {
-            refreshTokens { [weak self] ok, expired in
-                guard let self else { return }
-                if ok { self.writeBackAuth(); self.doFetch() }
-                else if expired {
-                    self.status = .unavailable(reason: "登录已过期，请重新运行 codex login")
-                }
-            }
-            return
-        }
-        doFetch()
-    }
-
-    private func lastRefresh(of a: CodexAuth) -> Date? {
-        // codex CLI 实际格式里 last_refresh 在 JSON 顶层，兼容 tokens 内
-        if let s = a.rawJSON["last_refresh"] as? String, let d = Self.parseISO(s) { return d }
-        if let s = (a.rawJSON["tokens"] as? [String: Any])?["last_refresh"] as? String,
-           let d = Self.parseISO(s) { return d }
-        return nil
-    }
-
-    private static func parseISO(_ s: String) -> Date? {
-        let f1 = ISO8601DateFormatter()
-        f1.formatOptions = [.withInternetDateTime]
-        if let d = f1.date(from: s) { return d }
-        let f2 = ISO8601DateFormatter()
-        f2.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f2.date(from: s)
-    }
-
-    private func doFetch() {
-        guard let a = auth else { return }
         if !hasLoaded { status = .loading }
-        inFlight = true
-        var req = URLRequest(url: usageURL)
-        req.timeoutInterval = 10
-        req.cachePolicy = .reloadIgnoringLocalCacheData
-        req.setValue("Bearer \(a.accessToken)", forHTTPHeaderField: "Authorization")
-        req.setValue("application/json", forHTTPHeaderField: "Accept")
-        if let aid = a.accountId {
-            req.setValue(aid, forHTTPHeaderField: "ChatGPT-Account-Id")
-        }
-        URLSession.shared.dataTask(with: req) { [weak self] data, resp, err in
+
+        let operation = CodexRateLimitRequest(executableURL: executable) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self else { return }
-                self.inFlight = false
-                if let err = err {
-                    AppLogger.log("接口请求网络错误: \(err.localizedDescription)")
-                    if !self.hasLoaded { self.status = .unavailable(reason: "网络错误") }
-                    if debugMode { NSLog("QuotaPing quota: 请求失败 \(err.localizedDescription)") }
-                    return
-                }
-                let code = (resp as? HTTPURLResponse)?.statusCode ?? -1
-                switch code {
-                case 200:
-                    if let data { self.handle(data) }
-                    else {
-                        AppLogger.log("接口响应空数据")
-                        if !self.hasLoaded { self.status = .unavailable(reason: "空响应") }
-                    }
-                case 401, 403:
-                    AppLogger.log("接口 HTTP \(code)，尝试刷新凭证...")
-                    if debugMode { NSLog("QuotaPing quota: HTTP \(code), calling refreshTokens") }
-                    self.refreshTokens { [weak self] ok, expired in
-                        guard let self else { return }
-                        if ok {
-                            self.writeBackAuth()
-                            self.doFetch()      // 重试一次
-                        } else if expired {
-                            self.status = .unavailable(reason: "登录已过期，请重新运行 codex login")
-                        }
-                    }
-                default:
-                    if !self.hasLoaded {
-                        self.status = .unavailable(reason: "服务异常（HTTP \(code)）")
-                    }
-                    if debugMode { NSLog("QuotaPing quota: HTTP \(code)") }
+                self.request = nil
+                switch result {
+                case .success(let payload):
+                    self.handle(payload)
+                case .failure(let error):
+                    let reason = error.localizedDescription
+                    AppLogger.log("额度刷新失败：\(reason)")
+                    if !self.hasLoaded { self.status = .unavailable(reason: reason) }
+                    if debugMode { NSLog("QuotaPing quota: \(reason)") }
                 }
             }
-        }.resume()
+        }
+        request = operation
+        operation.start()
     }
 
-    private func handle(_ data: Data) {
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let rate = obj["rate_limit"] as? [String: Any] else {
-            if !hasLoaded { status = .unavailable(reason: "接口结构已变更") }
-            if debugMode { NSLog("QuotaPing quota: 解析失败（缺少 rate_limit）") }
+    private static func codexExecutableURL() -> URL? {
+        let fm = FileManager.default
+        let home = fm.homeDirectoryForCurrentUser
+        var candidates: [URL] = []
+        if let configured = ProcessInfo.processInfo.environment["QUOTAPING_CODEX_PATH"],
+           !configured.isEmpty {
+            candidates.append(URL(fileURLWithPath: configured))
+        }
+        candidates += [
+            URL(fileURLWithPath: "/Applications/ChatGPT.app/Contents/Resources/codex"),
+            home.appendingPathComponent("Applications/ChatGPT.app/Contents/Resources/codex"),
+            URL(fileURLWithPath: "/Applications/Codex.app/Contents/Resources/codex"),
+            home.appendingPathComponent("Applications/Codex.app/Contents/Resources/codex"),
+            URL(fileURLWithPath: "/opt/homebrew/bin/codex"),
+            URL(fileURLWithPath: "/usr/local/bin/codex"),
+            home.appendingPathComponent(".local/bin/codex"),
+        ]
+        return candidates.first { fm.isExecutableFile(atPath: $0.path) }
+    }
+
+    private func handle(_ payload: CodexRateLimitResult) {
+        let result = payload.limits
+        let byID = result["rateLimitsByLimitId"] as? [String: Any]
+        let codexBucket = byID?["codex"] as? [String: Any]
+        guard let bucket = codexBucket ?? result["rateLimits"] as? [String: Any] else {
+            status = .unavailable(reason: "Codex 未返回额度信息")
             return
         }
-        let plan = (obj["plan_type"] as? String) ?? "unknown"
-        func win(_ key: String) -> QuotaWindow? {
-            guard let w = rate[key] as? [String: Any],
-                  let used = (w["used_percent"] as? NSNumber)?.intValue,
-                  let reset = (w["reset_at"] as? NSNumber)?.doubleValue else { return nil }
-            return QuotaWindow(usedPercent: used, resetAt: Date(timeIntervalSince1970: reset))
+
+        struct ParsedWindow {
+            let durationMinutes: Int
+            let quota: QuotaWindow
         }
-        var credits: Double?
-        if let c = obj["credits"] as? [String: Any], (c["has_credits"] as? Bool) == true {
-            credits = (c["balance"] as? NSNumber)?.doubleValue
-        }
-        var five = win("primary_window")
-        var week = win("secondary_window")
-        
-        if plan.lowercased() == "pro" {
-            week = win("primary_window")
-            five = win("secondary_window")
+        func parseWindow(_ value: Any?) -> ParsedWindow? {
+            guard let object = value as? [String: Any],
+                  let used = (object["usedPercent"] as? NSNumber)?.doubleValue,
+                  let duration = (object["windowDurationMins"] as? NSNumber)?.intValue,
+                  let reset = (object["resetsAt"] as? NSNumber)?.doubleValue else { return nil }
+            return ParsedWindow(
+                durationMinutes: duration,
+                quota: QuotaWindow(
+                    usedPercent: Int(used.rounded()),
+                    resetAt: Date(timeIntervalSince1970: reset)
+                )
+            )
         }
 
-        status = .ok(plan: plan,
-                     fiveHour: five,
-                     weekly: week,
-                     credits: credits)
+        let windows = [parseWindow(bucket["primary"]), parseWindow(bucket["secondary"])]
+            .compactMap { $0 }
+        let five = windows.first(where: { $0.durationMinutes == 5 * 60 })
+            ?? windows.filter({ $0.durationMinutes < 24 * 60 })
+                .min(by: { $0.durationMinutes < $1.durationMinutes })
+        let week = windows.first(where: { $0.durationMinutes == 7 * 24 * 60 })
+            ?? windows.filter({ $0.durationMinutes >= 24 * 60 })
+                .max(by: { $0.durationMinutes < $1.durationMinutes })
+
+        let plan = (payload.account?["planType"] as? String)
+            ?? (bucket["planType"] as? String)
+            ?? "unknown"
+        let credits = Self.creditBalance(bucket["credits"] ?? result["credits"])
+        status = .ok(
+            plan: plan,
+            fiveHour: five?.quota,
+            weekly: week?.quota,
+            credits: credits
+        )
         hasLoaded = true
         if debugMode { NSLog("QuotaPing quota: \(status.debugDescription)") }
     }
 
-    // MARK: token 刷新（auth.openai.com）
-
-    private func refreshTokens(_ done: @escaping (_ ok: Bool, _ expired: Bool) -> Void) {
-        guard let a = auth,
-              let s = a.rawJSON["tokens"] as? [String: Any],
-              let rt = s["refresh_token"] as? String else {
-            AppLogger.log("凭证刷新失败：无 refresh_token")
-            if debugMode { NSLog("QuotaPing quota: 无 refresh_token，无法刷新") }
-            done(false, true)
-            return
+    private static func creditBalance(_ value: Any?) -> Double? {
+        guard let object = value as? [String: Any] else { return nil }
+        for key in ["balance", "remaining", "available"] {
+            if let number = object[key] as? NSNumber { return number.doubleValue }
         }
-        var req = URLRequest(url: tokenURL)
-        req.httpMethod = "POST"
-        req.timeoutInterval = 15
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let body: [String: String] = [
-            "grant_type": "refresh_token",
-            "client_id": clientId,
-            "refresh_token": rt
-        ]
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
-
-        URLSession.shared.dataTask(with: req) { [weak self] data, resp, err in
-            DispatchQueue.main.async {
-                var ok = false
-                var expired = false
-                if err == nil, let data,
-                   let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let at = obj["access_token"] as? String {
-                    var tokens = s
-                    tokens["access_token"] = at
-                    if let nr = obj["refresh_token"] as? String { tokens["refresh_token"] = nr }
-                    if let idt = obj["id_token"] as? String { tokens["id_token"] = idt }
-                    let iso = ISO8601DateFormatter()
-                    tokens["last_refresh"] = iso.string(from: Date())
-                    var newAuth = a
-                    newAuth.rawJSON["tokens"] = tokens
-                    newAuth.rawJSON["last_refresh"] = tokens["last_refresh"] as? String
-                    newAuth.accessToken = at
-                    newAuth.refreshToken = tokens["refresh_token"] as? String
-                    self?.auth = newAuth
-                    ok = true
-                    AppLogger.log("凭证刷新成功")
-                    if debugMode { NSLog("QuotaPing quota: token 刷新成功") }
-                } else {
-                    let code = (resp as? HTTPURLResponse)?.statusCode ?? -1
-                    AppLogger.log("凭证刷新失败，HTTP: \(code)")
-                    if code >= 400 && code < 500 {
-                        expired = true
-                        self?.auth = nil
-                    }
-                    if debugMode {
-                        NSLog("QuotaPing quota: 刷新失败 HTTP \(code) \(err?.localizedDescription ?? "")")
-                    }
-                }
-                done(ok, expired)
-            }
-        }.resume()
+        return nil
     }
 }
 
@@ -720,7 +759,7 @@ struct HelpView: View {
                 HelpFeatureRow(
                     icon: "arrow.clockwise",
                     title: "自动更新",
-                    detail: "程序会定时刷新。也可以在菜单中立即刷新，并分别调整连通和额度刷新频率。"
+                    detail: "额度通过官方 Codex 本地服务读取；程序会定时刷新，也可以在菜单中立即刷新。"
                 )
                 HelpFeatureRow(
                     icon: "doc.text.magnifyingglass",

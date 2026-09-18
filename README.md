@@ -46,10 +46,14 @@ open QuotaPing.app
 
 - 连通检测：对 `google.com/generate_204` 发起无缓存 GET，只接受来自原域名的 204；
   默认 30s，可设 5s～5min。RTT ≥ 500ms 的半连通状态按不可用显示红叉
-- ChatGPT 额度：复用 Codex CLI 凭据（`~/.codex/auth.json`）调
-  `chatgpt.com/backend-api/wham/usage`，默认 60s，可设 30s～15min
-- 未登录 Codex 时额度区显示提示，连通检测不受影响；
-  运行 `codex login` 后自动恢复（无需重启）
+- ChatGPT 额度：通过官方 `codex app-server` 的 `account/rateLimits/read`
+  接口读取，默认 60s，可设 30s～15min
+- QuotaPing 不读取或修改 `auth.json`，也不自行持有、刷新 OAuth token；
+  登录与凭据生命周期完全交给 ChatGPT/Codex
+- 未安装或未登录 ChatGPT/Codex 时额度区显示提示，连通检测不受影响；
+  完成登录后可点击“立即刷新”恢复
+- 默认查找 `/Applications/ChatGPT.app`、`/Applications/Codex.app` 及常见 CLI
+  安装路径；也可通过 `QUOTAPING_CODEX_PATH` 指定 `codex` 可执行文件
 
 ## 调试
 
