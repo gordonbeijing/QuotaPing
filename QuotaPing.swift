@@ -1083,6 +1083,8 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     private let updaterController: SPUStandardUpdaterController
     private var cancellables = Set<AnyCancellable>()
     private var networkIndicator: NetworkIndicatorState = .unknown
+    private var liveMenuItems: [NSMenuItem] = []
+    private var isMenuOpen = false
     private lazy var logWindow = NetworkLogWindowController(ping: ping)
     private lazy var helpWindow = HelpWindowController()
 
@@ -1104,7 +1106,14 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         item.button?.imagePosition = .imageOnly
 
         Publishers.CombineLatest3(ping.$status, ping.$lastChecked, quota.$status)
-            .sink { [weak self] _, _, _ in self?.updateIcon() }
+            .sink { [weak self] _, _, _ in
+                // @Published 在 willSet 时通知；等赋值完成后再读取引擎状态。
+                // common modes 也覆盖菜单展开期间的 eventTracking 模式。
+                RunLoop.main.perform(inModes: [.common]) { [weak self] in
+                    self?.updateIcon()
+                    self?.updateOpenMenu()
+                }
+            }
             .store(in: &cancellables)
         updateIcon()
     }
@@ -1145,13 +1154,14 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         item.button?.toolTip = image.accessibilityDescription
     }
 
-    // MARK: 菜单（每次打开时重建，保证状态新鲜）
+    // MARK: 菜单（打开时构建，展开期间原位刷新数据项）
 
     func menuWillOpen(_ menu: NSMenu) {
+        isMenuOpen = true
         menu.removeAllItems()
 
-        menu.addItem(disabled(googleLine))
-        for line in chatgptLines { menu.addItem(disabled(line)) }
+        liveMenuItems = ([googleLine] + chatgptLines).map { disabled($0) }
+        for entry in liveMenuItems { menu.addItem(entry) }
         menu.addItem(.separator())
 
         let pingMenu = NSMenu()
@@ -1211,6 +1221,28 @@ final class StatusBarController: NSObject, NSMenuDelegate {
                               action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        isMenuOpen = false
+    }
+
+    private func updateOpenMenu() {
+        guard isMenuOpen, let menu = item.menu else { return }
+        let lines = [googleLine] + chatgptLines
+        // 不重建整个菜单，避免打断高亮项和频率子菜单的操作。
+        while liveMenuItems.count > lines.count {
+            menu.removeItem(liveMenuItems.removeLast())
+        }
+        for (index, line) in lines.enumerated() {
+            if index < liveMenuItems.count {
+                liveMenuItems[index].title = line
+            } else {
+                let entry = disabled(line)
+                menu.insertItem(entry, at: index)
+                liveMenuItems.append(entry)
+            }
+        }
     }
 
     private func disabled(_ title: String) -> NSMenuItem {
