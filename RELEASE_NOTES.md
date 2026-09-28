@@ -1,3 +1,3 @@
-# QuotaPing 1.3.0
+# QuotaPing 1.3.1
 
-- 运行日志文件新增 5MB 上限，达到上限后自动删除最旧记录并保留最新内容，避免日志文件无限增长。
+- 修复 ChatGPT 桌面版更新后（Codex CLI 迁入 `codex-cli` 子包）状态栏显示“未找到 Codex”的问题，同时兼容尚未更新 ChatGPT 的旧版路径。

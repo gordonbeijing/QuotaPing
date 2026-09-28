@@ -649,6 +649,16 @@ final class QuotaEngine: ObservableObject {
             candidates.append(URL(fileURLWithPath: configured))
         }
         candidates += [
+            // ChatGPT/Codex 新版：CLI 移入 codex-cli 子包（≥0.15x）。
+            URL(fileURLWithPath: "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"),
+            URL(fileURLWithPath: "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"),
+            home.appendingPathComponent("Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"),
+            home.appendingPathComponent("Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"),
+            URL(fileURLWithPath: "/Applications/Codex.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"),
+            URL(fileURLWithPath: "/Applications/Codex.app/Contents/Resources/codex-cli/bin/codex"),
+            home.appendingPathComponent("Applications/Codex.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"),
+            home.appendingPathComponent("Applications/Codex.app/Contents/Resources/codex-cli/bin/codex"),
+            // 旧版布局：CLI 直接放在 Resources 下。
             URL(fileURLWithPath: "/Applications/ChatGPT.app/Contents/Resources/codex"),
             home.appendingPathComponent("Applications/ChatGPT.app/Contents/Resources/codex"),
             URL(fileURLWithPath: "/Applications/Codex.app/Contents/Resources/codex"),

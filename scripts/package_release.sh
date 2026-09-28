@@ -47,6 +47,7 @@ Vendor/Sparkle-2.10.0/bin/generate_appcast \
   -e 's|(releases/download/)v[^/]+/(QuotaPing-1\.2\.7-macOS-universal\.zip)|\1v1.2.7/\2|' \
   -e 's|(releases/download/)v[^/]+/(QuotaPing-1\.2\.8-macOS-universal\.zip)|\1v1.2.8/\2|' \
   -e 's|(releases/download/)v[^/]+/(QuotaPing-1\.2\.9-macOS-universal\.zip)|\1v1.2.9/\2|' \
+  -e 's|(releases/download/)v[^/]+/(QuotaPing-1\.3\.0-macOS-universal\.zip)|\1v1.3.0/\2|' \
   "$UPDATES_DIR/appcast.xml"
 cp "$UPDATES_DIR/appcast.xml" "$ROOT_DIR/appcast.xml"
 rm -f "$UPDATES_DIR/appcast.xml"
