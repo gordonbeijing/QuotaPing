@@ -21,23 +21,45 @@ struct AppLogger {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent("QuotaPing.log")
     }()
-    
+
+    // 运行日志上限 5MB；超限后裁剪到 4MB，避免每次写入都触发裁剪。
+    private static let maxFileSize = 5 * 1024 * 1024
+    private static let trimTargetSize = 4 * 1024 * 1024
+
     static func log(_ message: String) {
         if debugMode { NSLog("QuotaPing: %@", message) }
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let line = "[\(formatter.string(from: Date()))] \(message)\n"
-        if let data = line.data(using: .utf8) {
-            if FileManager.default.fileExists(atPath: logURL.path) {
-                if let handle = try? FileHandle(forWritingTo: logURL) {
-                    handle.seekToEndOfFile()
-                    handle.write(data)
-                    handle.closeFile()
-                }
-            } else {
-                try? data.write(to: logURL)
+        guard let data = line.data(using: .utf8) else { return }
+        let fm = FileManager.default
+        if fm.fileExists(atPath: logURL.path) {
+            if let attrs = try? fm.attributesOfItem(atPath: logURL.path),
+               let size = attrs[.size] as? Int,
+               size + data.count > maxFileSize {
+                trimOldestLines(keeping: trimTargetSize - data.count)
             }
+            if let handle = try? FileHandle(forWritingTo: logURL) {
+                handle.seekToEndOfFile()
+                handle.write(data)
+                handle.closeFile()
+            }
+        } else {
+            try? data.write(to: logURL)
         }
+    }
+
+    /// 日志按追加写入，最旧记录在文件头部；仅保留末尾最新的 keepBytes 字节，并按行对齐丢弃残行。
+    private static func trimOldestLines(keeping keepBytes: Int) {
+        guard let data = try? Data(contentsOf: logURL) else { return }
+        let keep = max(0, min(keepBytes, data.count))
+        var start = data.count - keep
+        // 向后推进到下一个换行符之后，确保不会保留被截断的半行。
+        while start < data.count, data[data.startIndex + start] != 0x0A { start += 1 }
+        if start < data.count { start += 1 }
+        guard start < data.count else { return }
+        let kept = data.subdata(in: (data.startIndex + start)..<data.endIndex)
+        try? kept.write(to: logURL, options: .atomic)
     }
 }
 
